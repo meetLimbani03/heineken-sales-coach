@@ -2,8 +2,20 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { SalesRecord, ChatMessage, CoachInsight, Meeting, MeetingNotes } from '../types';
 
-// The API key is set in the environment variable `process.env.API_KEY`
-const ai = new GoogleGenAI({apiKey: process.env.API_KEY!});
+// Initialize the GoogleGenAI client lazily and read the key via Vite envs.
+// In production on Netlify, missing envs must not crash the app at import time.
+let ai: GoogleGenAI | null = null;
+const getAiClient = (): GoogleGenAI | null => {
+  if (ai) return ai;
+  const apiKey = import.meta?.env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
+    // Do not throw here; return null so callers can handle gracefully
+    console.warn("Gemini API key is missing. Set VITE_GEMINI_API_KEY in your environment.");
+    return null;
+  }
+  ai = new GoogleGenAI({ apiKey });
+  return ai;
+};
 
 export const generateCoachInsights = async (salesData: SalesRecord[]): Promise<CoachInsight[]> => {
   const model = "gemini-2.5-flash";
@@ -22,7 +34,17 @@ The 'prompt' should be a question the sales rep can ask the AI to elaborate on t
 Return the response as a JSON array.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const client = getAiClient();
+    if (!client) {
+      return [{
+        type: 'Risk',
+        title: 'AI is not configured',
+        description: 'Set VITE_GEMINI_API_KEY to enable coach insights.',
+        prompt: 'How do I configure the AI key?'
+      }];
+    }
+
+    const response = await client.models.generateContent({
       model,
       contents: prompt,
       config: {
@@ -86,7 +108,12 @@ ${salesDataSummary}`;
       parts: [{ text: m.text }]
   }));
 
-  const stream = await ai.models.generateContentStream({
+  const client = getAiClient();
+  if (!client) {
+    throw new Error("Gemini API key missing");
+  }
+
+  const stream = await client.models.generateContentStream({
     model,
     contents: contents,
     config: {
@@ -122,7 +149,17 @@ Please generate preparation notes for the following four sections:
 For each section, provide a concise summary as a single string, using bullet points with markdown ('•').
 `;
 
-    const response = await ai.models.generateContent({
+    const client = getAiClient();
+    if (!client) {
+      return {
+        customerInfo: "AI key missing. Configure VITE_GEMINI_API_KEY to enable meeting prep.",
+        analyzePerformance: "",
+        setObjectives: "",
+        prepareMaterials: ""
+      };
+    }
+
+    const response = await client.models.generateContent({
         model,
         contents: prompt,
         config: {
