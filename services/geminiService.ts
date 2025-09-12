@@ -3,7 +3,7 @@ import { Type, GenerateContentResponse } from "@google/genai";
 import { SalesRecord, ChatMessage, CoachInsight, Meeting, MeetingNotes } from '../types';
 
 // Frontend now calls a Netlify Function to keep GEMINI_API_KEY server-side.
-const API_BASE = "/api/gemini"; // netlify.toml maps /api/* to functions
+const API_BASE = "/.netlify/functions/gemini"; // works locally with `netlify dev` and in production
 
 export const generateCoachInsights = async (salesData: SalesRecord[]): Promise<CoachInsight[]> => {
   const model = "gemini-2.5-flash";
