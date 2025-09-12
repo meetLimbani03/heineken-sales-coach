@@ -1,21 +1,9 @@
 // FIX: Implementing the Gemini API service to power AI features.
-import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
+import { Type, GenerateContentResponse } from "@google/genai";
 import { SalesRecord, ChatMessage, CoachInsight, Meeting, MeetingNotes } from '../types';
 
-// Initialize the GoogleGenAI client lazily and read the key via Vite envs.
-// In production on Netlify, missing envs must not crash the app at import time.
-let ai: GoogleGenAI | null = null;
-const getAiClient = (): GoogleGenAI | null => {
-  if (ai) return ai;
-  const apiKey = import.meta?.env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY;
-  if (!apiKey) {
-    // Do not throw here; return null so callers can handle gracefully
-    console.warn("Gemini API key is missing. Set VITE_GEMINI_API_KEY in your environment.");
-    return null;
-  }
-  ai = new GoogleGenAI({ apiKey });
-  return ai;
-};
+// Frontend now calls a Netlify Function to keep GEMINI_API_KEY server-side.
+const API_BASE = "/api/gemini"; // netlify.toml maps /api/* to functions
 
 export const generateCoachInsights = async (salesData: SalesRecord[]): Promise<CoachInsight[]> => {
   const model = "gemini-2.5-flash";
@@ -34,52 +22,14 @@ The 'prompt' should be a question the sales rep can ask the AI to elaborate on t
 Return the response as a JSON array.`;
 
   try {
-    const client = getAiClient();
-    if (!client) {
-      return [{
-        type: 'Risk',
-        title: 'AI is not configured',
-        description: 'Set VITE_GEMINI_API_KEY to enable coach insights.',
-        prompt: 'How do I configure the AI key?'
-      }];
-    }
-
-    const response = await client.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              type: {
-                type: Type.STRING,
-                enum: ['Upsell', 'Risk', 'Promotion', 'Performance', 'Opportunity'],
-                description: 'The category of the insight.'
-              },
-              title: {
-                type: Type.STRING,
-                description: 'A short, catchy title for the insight.'
-              },
-              description: {
-                type: Type.STRING,
-                description: 'A one-sentence description of the insight.'
-              },
-              prompt: {
-                type: Type.STRING,
-                description: 'A question a user can ask to get more details.'
-              }
-            },
-            required: ['type', 'title', 'description', 'prompt']
-          }
-        }
-      }
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'generateCoachInsights', payload: { salesData } })
     });
-
-    const jsonText = response.text.trim();
-    return JSON.parse(jsonText) as CoachInsight[];
+    if (!res.ok) throw new Error(await res.text());
+    const json = await res.json();
+    return json.data as CoachInsight[];
   } catch (error) {
     console.error("Error generating coach insights:", error);
     // Return a default error insight
@@ -108,20 +58,19 @@ ${salesDataSummary}`;
       parts: [{ text: m.text }]
   }));
 
-  const client = getAiClient();
-  if (!client) {
-    throw new Error("Gemini API key missing");
+  // Replace streaming with single-response via function for simplicity
+  async function* generator() {
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'continueChat', payload: { messages, salesData } })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const json = await res.json();
+    // Emit one chunk compatible with existing consumer (using text field)
+    yield { text: json.data } as unknown as GenerateContentResponse;
   }
-
-  const stream = await client.models.generateContentStream({
-    model,
-    contents: contents,
-    config: {
-      systemInstruction: systemInstruction,
-    },
-  });
-
-  return stream;
+  return generator();
 };
 
 export const generateMeetingPrep = async (meeting: Meeting, salesData: SalesRecord[]): Promise<MeetingNotes> => {
@@ -149,33 +98,12 @@ Please generate preparation notes for the following four sections:
 For each section, provide a concise summary as a single string, using bullet points with markdown ('•').
 `;
 
-    const client = getAiClient();
-    if (!client) {
-      return {
-        customerInfo: "AI key missing. Configure VITE_GEMINI_API_KEY to enable meeting prep.",
-        analyzePerformance: "",
-        setObjectives: "",
-        prepareMaterials: ""
-      };
-    }
-
-    const response = await client.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    customerInfo: { type: Type.STRING, description: "Details about the customer, contact person, and outlet." },
-                    analyzePerformance: { type: Type.STRING, description: "Analysis of sales performance and competition." },
-                    setObjectives: { type: Type.STRING, description: "Specific objectives for the meeting." },
-                    prepareMaterials: { type: Type.STRING, description: "List of materials to prepare for the meeting." }
-                },
-                required: ["customerInfo", "analyzePerformance", "setObjectives", "prepareMaterials"]
-            }
-        }
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'generateMeetingPrep', payload: { meeting, salesData } })
     });
-    
-    return JSON.parse(response.text) as MeetingNotes;
+    if (!res.ok) throw new Error(await res.text());
+    const json = await res.json();
+    return json.data as MeetingNotes;
 };
