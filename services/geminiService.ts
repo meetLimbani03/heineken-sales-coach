@@ -1,5 +1,5 @@
 // FIX: Implementing the Gemini API service to power AI features.
-import { Type, GenerateContentResponse } from "@google/genai";
+import {  GenerateContentResponse } from "@google/genai";
 import { SalesRecord, ChatMessage, CoachInsight, Meeting, MeetingNotes } from '../types';
 
 // Frontend now calls a Netlify Function to keep GEMINI_API_KEY server-side.

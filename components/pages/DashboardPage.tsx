@@ -4,11 +4,11 @@ import Header from '../layout/Header';
 import ChatSidebar from '../chat/ChatSidebar';
 import StatCard from '../dashboard/StatCard';
 import ChatWindow from '../chat/ChatWindow';
-import { ChatThread, SalesRecord, Meeting, ChatMessage, CoachInsight } from '../../types';
+import { ChatThread, SalesRecord, Meeting, ChatMessage, CoachInsight, OutletDetails } from '../../types';
 import { getSalesDataForRep } from '../../services/salesDataService';
 import { generateCoachInsights } from '../../services/geminiService';
 import { v4 as uuidv4 } from 'uuid';
-import { MOCK_MEETINGS } from '../../constants';
+import { REP_MEETINGS, OUTLET_DATA } from '../../constants';
 import MeetingCard from '../dashboard/MeetingCard';
 import MeetingPrepView from '../dashboard/MeetingPrepView';
 import ProfilePage from './ProfilePage';
@@ -26,14 +26,31 @@ const DashboardPage: React.FC = () => {
   
   const [mainView, setMainView] = useState<'chat' | 'meetingPrep' | 'profile'>('chat');
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [selectedOutlet, setSelectedOutlet] = useState<OutletDetails | null>(null);
+
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [meetingPage, setMeetingPage] = useState(0);
+  const MEETINGS_PER_PAGE = 3;
 
 
   useEffect(() => {
     if (user) {
       const data = getSalesDataForRep(user.repCode);
       setSalesData(data);
+
+      const userMeetings = REP_MEETINGS[user.repCode] || [];
+      const scheduled = userMeetings
+        .filter(m => m.status === 'Scheduled')
+        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+      
+      const completed = userMeetings
+        .filter(m => m.status === 'Completed')
+        .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+        
+      setMeetings([...scheduled, ...completed]);
       
       const fetchInsights = async () => {
         setIsLoadingInsights(true);
@@ -108,6 +125,8 @@ const DashboardPage: React.FC = () => {
   
   const handleMeetingClick = (meeting: Meeting) => {
     setSelectedMeeting(meeting);
+    const outletData = OUTLET_DATA[meeting.accountName] || null;
+    setSelectedOutlet(outletData);
     setMainView('meetingPrep');
   };
 
@@ -117,6 +136,12 @@ const DashboardPage: React.FC = () => {
     action();
     setIsMobileMenuOpen(false);
   };
+
+  const totalMeetingPages = Math.ceil(meetings.length / MEETINGS_PER_PAGE);
+  const currentMeetings = meetings.slice(
+      meetingPage * MEETINGS_PER_PAGE,
+      (meetingPage + 1) * MEETINGS_PER_PAGE
+  );
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
@@ -149,6 +174,7 @@ const DashboardPage: React.FC = () => {
                 {mainView === 'meetingPrep' && selectedMeeting && (
                     <MeetingPrepView 
                         meeting={selectedMeeting}
+                        outletDetails={selectedOutlet}
                         onBack={() => setMainView('chat')}
                         salesData={salesData.filter(d => d.account_name === selectedMeeting.accountName)}
                     />
@@ -157,9 +183,32 @@ const DashboardPage: React.FC = () => {
                 {mainView === 'chat' && (
                     <div className="flex flex-col gap-6 h-full">
                         <div>
-                            <h2 className="text-xl font-bold text-gray-800 mb-4">Upcoming Meetings</h2>
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-gray-800">Your Visits</h2>
+                                {totalMeetingPages > 1 && (
+                                <div className="flex items-center space-x-2">
+                                    <button 
+                                        onClick={() => setMeetingPage(p => p - 1)}
+                                        disabled={meetingPage === 0}
+                                        className="p-1.5 rounded-full bg-white border shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        aria-label="Previous meetings"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                    </button>
+                                    <span className="text-sm font-medium text-gray-600 w-12 text-center">{meetingPage + 1} / {totalMeetingPages}</span>
+                                    <button 
+                                        onClick={() => setMeetingPage(p => p + 1)}
+                                        disabled={meetingPage >= totalMeetingPages - 1}
+                                        className="p-1.5 rounded-full bg-white border shadow-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        aria-label="Next meetings"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                    </button>
+                                </div>
+                                )}
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {MOCK_MEETINGS.map(meeting => (
+                                {currentMeetings.map(meeting => (
                                     <MeetingCard key={meeting.id} meeting={meeting} onClick={handleMeetingClick} />
                                 ))}
                             </div>

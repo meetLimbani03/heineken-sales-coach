@@ -33,7 +33,9 @@ export interface SalesRecord {
 export interface Meeting {
   id: string;
   accountName: string;
-  time: string;
+  time: string; // The formatted string for display
+  startTime: string; // ISO 8601 string for sorting
+  status: 'Scheduled' | 'Completed';
   objective: string;
   currentIssues: string[];
 }
@@ -49,4 +51,44 @@ export interface CoachInsight {
 
 export interface MeetingNotes {
   [key: string]: string;
+}
+
+// Types for Outlet Snapshot
+export interface OutletPerformance {
+  totalVolume: { ly: number; ytd: number };
+  channelShare: { ly: number; ytd: number };
+  ams: { ly: number; ytd: number };
+}
+
+export interface OutletVolumeTrend {
+  year: number | string;
+  label: string;
+  sales: number;
+}
+
+export interface OutletBrandSplit {
+  brand: string;
+  percentage: number;
+}
+
+export interface OutletContractVolume {
+  year: number;
+  volume: number;
+}
+
+export interface OutletDetails {
+  accountName: string;
+  address: string;
+  salesRep: string;
+  owner: string;
+  outletCount: number;
+  performance: OutletPerformance;
+  classification: string;
+  createdDate: string;
+  latestOrderDate: string;
+  outletType: string;
+  marketShare: string;
+  volumeTrend: OutletVolumeTrend[];
+  brandSplit: OutletBrandSplit[];
+  contractVolume: OutletContractVolume[];
 }
