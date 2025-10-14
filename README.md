@@ -14,7 +14,11 @@ View your app in AI Studio: https://ai.studio/apps/drive/1NOxEadjygIFK21ZeBgMcFz
 
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+   `npm install` or `pnpm install`
+2. Set the following environment variables in [.env](.env) or your deployment environment:
+   - `AZURE_OPENAI_API_KEY` - Your Azure OpenAI API key
+   - `AZURE_OPENAI_ENDPOINT` - Your Azure OpenAI endpoint URL
+   - `AZURE_OPENAI_CHAT_DEPLOYMENT_NAME` - The name of your deployed chat model
+   - `AZURE_OPENAI_API_VERSION` - The API version (default: "2024-08-01-preview")
 3. Run the app:
-   `npm run dev`
+   `npm run dev` or `pnpm dev`

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Meeting, SalesRecord, MeetingNotes, OutletDetails } from '../../types';
 import { Icons, PREP_STEPS } from '../../constants';
-import { generateMeetingPrep } from '../../services/geminiService';
+import { generateMeetingPrep } from '../../services/azureOpenAIService';
 import OutletSnapshotView from './OutletSnapshotView';
 import VisitFeedbackView from './VisitFeedbackView';
 

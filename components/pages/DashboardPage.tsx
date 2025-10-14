@@ -6,7 +6,7 @@ import StatCard from '../dashboard/StatCard';
 import ChatWindow from '../chat/ChatWindow';
 import { ChatThread, SalesRecord, Meeting, ChatMessage, CoachInsight, OutletDetails } from '../../types';
 import { getSalesDataForRep } from '../../services/salesDataService';
-import { generateCoachInsights } from '../../services/geminiService';
+import { generateCoachInsights } from '../../services/azureOpenAIService';
 import { v4 as uuidv4 } from 'uuid';
 import { REP_MEETINGS, OUTLET_DATA } from '../../constants';
 import MeetingCard from '../dashboard/MeetingCard';

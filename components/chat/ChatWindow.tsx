@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatThread, ChatMessage, SalesRecord } from '../../types';
-import { continueChat } from '../../services/geminiService';
+import { continueChat } from '../../services/azureOpenAIService';
 import { v4 as uuidv4 } from 'uuid';
 import ChatMessageComponent from './ChatMessage';
 import { Icons } from '../../constants';
@@ -69,7 +69,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ thread, setThreads, salesData }
               t.id === thread.id ? { ...t, messages: [...t.messages, errorMessage] } : t
             )
         );
-      console.error("Error with Gemini API:", error);
+      console.error("Error with Azure OpenAI API:", error);
     } finally {
       setIsLoading(false);
     }
